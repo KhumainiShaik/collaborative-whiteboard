@@ -1,0 +1,21 @@
+{
+  "name": "crdt-snapshot-aggregator",
+  "version": "1.0.0",
+  "description": "Snapshot aggregator for Yjs CRDT state durability in private cloud",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "redis": "^4.6.0",
+    "mongodb": "^5.8.0",
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

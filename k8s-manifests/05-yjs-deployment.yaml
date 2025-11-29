@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yjs-server
+  namespace: whiteboard
+  labels:
+    app: yjs-server
+    tier: websocket-sync
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: yjs-server
+  template:
+    metadata:
+      labels:
+        app: yjs-server
+        tier: websocket-sync
+    spec:
+      # Pod anti-affinity: spread y-websocket replicas across nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - yjs-server
+              topologyKey: kubernetes.io/hostname
+      
+      containers:
+      - name: yjs
+        image: alokinplc/y-websocket:latest
+        imagePullPolicy: Always
+        ports:
+        - name: ws
+          containerPort: 1234
+          protocol: TCP
+        
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: REDIS_URL
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: REDIS_PASSWORD
+        - name: NODE_ENV
+          value: "production"
+        - name: YJS_ROOM_DIR
+          value: "/tmp/yjs-rooms"
+        - name: MONGO_URI
+          valueFrom:
+            secretKeyRef:
+              name: mongo-uri
+              key: MONGO_URI
+        
+        livenessProbe:
+          tcpSocket:
+            port: 1234
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          tcpSocket:
+            port: 1234
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 2
+        
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+
+
+---
+# Internal ClusterIP Service for y-websocket
+# No LoadBalancer - ingress will route to it
+apiVersion: v1
+kind: Service
+metadata:
+  name: yjs-server-svc
+  namespace: whiteboard
+  labels:
+    app: yjs-server
+spec:
+  type: ClusterIP
+  selector:
+    app: yjs-server
+  ports:
+  - name: ws
+    port: 1234
+    targetPort: ws
+    protocol: TCP
+
+---
+# Horizontal Pod Autoscaler for y-websocket
+# Scales based on CPU and memory utilization
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: yjs-server-hpa
+  namespace: whiteboard
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: yjs-server
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

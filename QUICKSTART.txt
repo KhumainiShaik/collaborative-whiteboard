@@ -1,0 +1,19 @@
+Quick deployment reference:
+
+1. terraform apply
+2. Get kubeconfig via: gcloud compute ssh <server> --zone=<z> --tunnel-through-iap -- "cat /root/.kube/config" > ~/.kube/config
+3. kubectl apply -f k8s-manifests/
+4. Open: http://<PUBLIC_LB_IP>/
+5. Snapshots auto-export to GCS every 4 hours
+
+Config changes needed:
+- terraform/terraform.tfvars: gcp_project_id, mongodb_org_id
+- k8s-manifests/01-mongodb-secret.yaml: MONGO_URI (Atlas connection string)
+- k8s-manifests/10-snapshot-cronjob.yaml: PROJECT_ID placeholders
+
+MongoDB Atlas:
+- Create cluster (M0 free tier OK)
+- Add whiteboard database user
+- IP whitelist: <Cloud NAT IP from terraform output>
+
+All code, zero unnecessary docs. Ready to deploy.

@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: excalidraw-ui
+  namespace: whiteboard
+  labels:
+    app: excalidraw-ui
+    tier: frontend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: excalidraw-ui
+  template:
+    metadata:
+      labels:
+        app: excalidraw-ui
+        tier: frontend
+    spec:
+      # Pod anti-affinity: spread Excalidraw replicas across nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - excalidraw-ui
+              topologyKey: kubernetes.io/hostname
+      
+      # Stateless frontend containers
+      containers:
+      - name: ui
+        image: skkhumaini1119/excalidraw-yjs:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        
+        env:
+        - name: YJS_SERVER_URL
+          value: "ws://<INGRESS_HOSTNAME>/ws"  # Replace <INGRESS_HOSTNAME> with public IP or hostname (e.g., ws://203.0.113.42/ws)
+        - name: NODE_ENV
+          value: "production"
+        
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          failureThreshold: 2
+        
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+
+
+---
+# Internal ClusterIP Service for Excalidraw
+# No LoadBalancer - ingress will route to it
+apiVersion: v1
+kind: Service
+metadata:
+  name: excalidraw-svc
+  namespace: whiteboard
+  labels:
+    app: excalidraw-ui
+spec:
+  type: ClusterIP
+  selector:
+    app: excalidraw-ui
+  ports:
+  - name: http
+    port: 3000
+    targetPort: http
+    protocol: TCP
+
+---
+# Horizontal Pod Autoscaler for Excalidraw
+# Scales based on CPU and memory utilization
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: excalidraw-hpa
+  namespace: whiteboard
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: excalidraw-ui
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

@@ -1,0 +1,69 @@
+---
+# HTTP Ingress for Excalidraw + WebSocket
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: excalidraw-ingress
+  namespace: whiteboard
+  annotations:
+    nginx.ingress.kubernetes.io/websocket-services: yjs-server-svc
+    nginx.ingress.kubernetes.io/proxy-upgrade: "websocket"
+    nginx.ingress.kubernetes.io/proxy-connection: "Upgrade"
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: excalidraw-svc
+            port:
+              number: 3000
+      - path: /ws
+        pathType: Prefix
+        backend:
+          service:
+            name: yjs-server-svc
+            port:
+              number: 1234
+
+---
+# PodDisruptionBudget for yjs-server
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: yjs-server-pdb
+  namespace: whiteboard
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: yjs-server
+
+---
+# PodDisruptionBudget for Excalidraw
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: excalidraw-pdb
+  namespace: whiteboard
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: excalidraw-ui
+
+---
+# PodDisruptionBudget for Redis
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: whiteboard
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: redis

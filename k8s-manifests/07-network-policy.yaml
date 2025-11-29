@@ -1,0 +1,160 @@
+---
+# NetworkPolicy: yjs-server ingress (from excalidraw, ingress controller)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-yjs-ingress
+  namespace: whiteboard
+spec:
+  podSelector:
+    matchLabels:
+      app: yjs-server
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow from Excalidraw UI
+  - from:
+    - podSelector:
+        matchLabels:
+          app: excalidraw-ui
+    ports:
+    - protocol: TCP
+      port: 1234
+  # Allow from NGINX ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 1234
+
+---
+# NetworkPolicy: yjs-server egress (to Redis, MongoDB Atlas, DNS)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-yjs-egress
+  namespace: whiteboard
+spec:
+  podSelector:
+    matchLabels:
+      app: yjs-server
+  policyTypes:
+  - Egress
+  egress:
+  # Allow to Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow to MongoDB Atlas (external, requires egress to internet)
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 27017
+  # Allow DNS (kube-dns in kube-system)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+
+---
+# NetworkPolicy: Excalidraw UI ingress (from NGINX ingress)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-excalidraw-ingress
+  namespace: whiteboard
+spec:
+  podSelector:
+    matchLabels:
+      app: excalidraw-ui
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 3000
+
+---
+# NetworkPolicy: Excalidraw UI egress (to yjs-server, DNS)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-excalidraw-egress
+  namespace: whiteboard
+spec:
+  podSelector:
+    matchLabels:
+      app: excalidraw-ui
+  policyTypes:
+  - Egress
+  egress:
+  # Allow to y-websocket
+  - to:
+    - podSelector:
+        matchLabels:
+          app: yjs-server
+    ports:
+    - protocol: TCP
+      port: 1234
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+
+---
+# NetworkPolicy: Snapshot aggregator (to Redis, MongoDB)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-aggregator-egress
+  namespace: whiteboard
+spec:
+  podSelector:
+    matchLabels:
+      app: snapshot-aggregator
+  policyTypes:
+  - Egress
+  egress:
+  # Allow to Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow to MongoDB
+  - to:
+    - podSelector:
+        matchLabels:
+          app: mongodb
+    ports:
+    - protocol: TCP
+      port: 27017
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53

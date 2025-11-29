@@ -1,0 +1,188 @@
+---
+# Redis password secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-password
+  namespace: whiteboard
+type: Opaque
+stringData:
+  REDIS_PASSWORD: "redis-whiteboard-demo-password"  # Change this in production!
+
+---
+# Redis StatefulSet - Internal CRDT state synchronization bus
+# No public IP, no external access
+# Used by y-websocket for distributed awareness and CRDT updates
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: whiteboard
+data:
+  redis.conf: |
+    # Redis configuration for K3s private cloud
+    # Minimal config - uses defaults for most settings
+    
+    # Server behavior
+    save 900 1
+    save 300 10
+    save 60 10000
+    
+    # AOF persistence (optional - disable for speed)
+    appendonly no
+    
+    # Logging
+    loglevel notice
+    logfile ""
+    
+    # Memory policy
+    maxmemory-policy allkeys-lru
+    
+    # Timeout for idle clients
+    timeout 300
+    
+    # Password authentication (set via command-line argument)
+    # requirepass is set in container args to use value from secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-svc
+  namespace: whiteboard
+  labels:
+    app: redis
+spec:
+  clusterIP: None  # Headless service for StatefulSet
+  selector:
+    app: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+    protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: whiteboard
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  selector:
+    app: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+    protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: whiteboard
+  labels:
+    app: redis
+spec:
+  serviceName: redis-svc
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        tier: state-sync
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - redis
+              topologyKey: kubernetes.io/hostname
+      
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: redis
+          containerPort: 6379
+          protocol: TCP
+        
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-password
+              key: REDIS_PASSWORD
+        
+        volumeMounts:
+        - name: redis-config
+          mountPath: /usr/local/etc/redis
+        - name: redis-data
+          mountPath: /data
+        
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - redis-cli -a "$REDIS_PASSWORD" ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - redis-cli -a "$REDIS_PASSWORD" ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        command:
+        - redis-server
+        - /usr/local/etc/redis/redis.conf
+        - --requirepass
+        - $(REDIS_PASSWORD)
+      
+      volumes:
+      - name: redis-config
+        configMap:
+          name: redis-config
+  
+  # volumeClaimTemplates for scaling beyond 1 replica
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 10Gi

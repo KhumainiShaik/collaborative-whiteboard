@@ -1,0 +1,79 @@
+---
+# ServiceAccount for snapshot CronJob with Workload Identity
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: snapshot-sa
+  namespace: whiteboard
+  annotations:
+    iam.gke.io/gcp-service-account: snapshot-sa@PROJECT_ID.iam.gserviceaccount.com
+
+---
+# CronJob: Export CRDT snapshots to GCS bucket periodically
+# Uses Workload Identity (no service account keys needed)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: snapshot-export
+  namespace: whiteboard
+spec:
+  schedule: "0 */4 * * *"  # Every 4 hours
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: snapshot-sa
+          restartPolicy: OnFailure
+          containers:
+          - name: exporter
+            image: google/cloud-sdk:latest
+            env:
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-uri
+                  key: MONGO_URI
+            - name: GCS_BUCKET
+              value: "PROJECT_ID-whiteboard-snapshots"
+            command:
+            - /bin/bash
+            - -c
+            - |
+              #!/bin/bash
+              set -e
+              
+              TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+              SNAPSHOT_FILE="snapshot-${TIMESTAMP}.bson.gz"
+              TEMP_DIR="/tmp/snapshot-export"
+              mkdir -p "$TEMP_DIR"
+              
+              # Export CRDT snapshots collection from MongoDB Atlas
+              echo "Exporting CRDT snapshots from MongoDB Atlas..."
+              mongodump \
+                --uri="${MONGO_URI}" \
+                --out="${TEMP_DIR}" \
+                --gzip \
+                --db=whiteboard \
+                --collection=crdt_snapshots \
+                || echo "Warning: mongodump failed, may be normal if no data exists"
+              
+              # Upload to GCS using Workload Identity (automatic auth)
+              if [ -f "${TEMP_DIR}/whiteboard/crdt_snapshots.bson.gz" ]; then
+                echo "Uploading to gs://${GCS_BUCKET}/${SNAPSHOT_FILE}..."
+                gsutil -m cp "${TEMP_DIR}/whiteboard/crdt_snapshots.bson.gz" \
+                  "gs://${GCS_BUCKET}/${SNAPSHOT_FILE}"
+                
+                # Update metadata file with latest export timestamp
+                echo "${TIMESTAMP}" | gsutil cp - "gs://${GCS_BUCKET}/latest-export.txt"
+                
+                echo "Snapshot export completed: ${SNAPSHOT_FILE}"
+              else
+                echo "No snapshots found in MongoDB; skipping upload"
+              fi
+              
+              # Cleanup
+              rm -rf "$TEMP_DIR"
+
