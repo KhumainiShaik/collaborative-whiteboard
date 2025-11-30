@@ -14,12 +14,6 @@ resource "google_compute_subnetwork" "private_subnet" {
 
   private_ip_google_access = true
   description              = "Private subnet for K3s control plane and worker nodes"
-
-  log_config {
-    aggregation_interval = "INTERVAL_5_SEC"
-    flow_logs_enabled    = true
-    metadata             = "INCLUDE_ALL_METADATA"
-  }
 }
 
 # Cloud NAT for private subnet egress

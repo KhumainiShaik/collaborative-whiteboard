@@ -1,13 +1,21 @@
+# Generate secure K3s cluster token for worker node authentication
+resource "random_password" "k3s_token" {
+  length  = 32
+  special = true
+}
+
 # K3s Server Node startup script
 locals {
-  k3s_server_startup_script = base64encode(templatefile("${path.module}/scripts/k3s-server-init.sh", {
+  k3s_server_startup_script = templatefile("${path.module}/scripts/k3s-server-init.sh", {
     cluster_name = var.environment
     private_subnet_cidr = var.private_subnet_cidr
-  }))
+  })
 
-  k3s_worker_startup_script = base64encode(templatefile("${path.module}/scripts/k3s-worker-init.sh", {
+  k3s_worker_startup_script = templatefile("${path.module}/scripts/k3s-worker-init.sh", {
     cluster_name = var.environment
-  }))
+    K3S_SERVER_IP = google_compute_instance.k3s_server.network_interface[0].network_ip
+    K3S_TOKEN = random_password.k3s_token.result
+  })
 }
 
 # Service Account for K3s VMs
@@ -85,7 +93,7 @@ resource "google_compute_instance" "k3s_workers" {
   count        = var.k3s_node_count - 1  # -1 because we have 1 server
   name         = "${var.environment}-worker-${count.index}"
   machine_type = var.k3s_worker_machine_type
-  zone         = "${var.gcp_region}-${["a", "b", "c"][count.index % 3]}"
+  zone         = "${var.gcp_region}-a"  # Keep all instances in same zone for instance group
 
   boot_disk {
     initialize_params {

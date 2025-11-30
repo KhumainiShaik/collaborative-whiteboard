@@ -1,104 +1,101 @@
 #!/bin/bash
 set -e
 
-# K3s Server (Control Plane) initialization script
-# Runs on the first VM to set up the control plane
+echo "=== K3s Server Node Initialization (HTTPS-Free) ==="
 
-echo "=== K3s Server Node Initialization ==="
+########################################
+# 0. Disable IPv6 (GCP NAT uses IPv4)
+########################################
+sysctl -w net.ipv6.conf.all.disable_ipv6=1
+sysctl -w net.ipv6.conf.default.disable_ipv6=1
+sysctl -w net.ipv6.conf.lo.disable_ipv6=1
 
-# Update system
-apt-get update
-apt-get upgrade -y
 
-# Install dependencies
-apt-get install -y \
-    curl \
-    wget \
-    git \
-    docker.io \
-    jq \
-    htop \
-    net-tools
 
-# Start Docker
+########################################
+# 2. Install dependencies
+########################################
+apt-get install -y curl wget git jq htop net-tools docker.io
+
 systemctl enable docker
 systemctl start docker
 
-# Install K3s server (single node / control plane)
-echo "Installing K3s server..."
-export INSTALL_K3S_SKIP_DOWNLOAD=false
-export INSTALL_K3S_VERSION=v1.28.0
-export K3S_CLUSTER_INIT=true
-export K3S_TOKEN=k3s-secret-token-12345
+########################################
+# 3. Install K3s (official installer, correct version)
+########################################
+K3S_VERSION="v1.34.2+k3s1"
+K3S_TOKEN="k3s-secret-token-12345"
 
-curl -sfL https://get.k3s.io | sh -
+echo "Installing K3s server version $K3S_VERSION..."
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="$K3S_VERSION" \
+  K3S_TOKEN="$K3S_TOKEN" sh -
 
-# Wait for K3s to be ready
-echo "Waiting for K3s to be ready..."
+########################################
+# 4. Wait for Kubernetes API
+########################################
+echo "Waiting for K3s API to become ready..."
 for i in {1..30}; do
-  if kubectl get nodes &> /dev/null; then
-    echo "K3s is ready!"
+  if k3s kubectl get nodes &> /dev/null; then
+    echo "K3s API is ready!"
     break
   fi
-  echo "Attempt $i/30: Waiting for K3s..."
-  sleep 10
+  echo "Attempt $i/30..."
+  sleep 5
 done
 
-# Label the server node with proper K3s roles and identifiers
-echo "Labeling K3s server node..."
-kubectl label nodes $(hostname) \
-  node-role.kubernetes.io/master=true \
-  node-role.kubernetes.io/control-plane=true \
-  role=k3s-server \
-  --overwrite
+########################################
+# 5. Wait for node to register in cluster
+########################################
+NODE=$(hostname)
+echo "Waiting for node $NODE to register in cluster..."
+for i in {1..60}; do
+  if k3s kubectl get node "$NODE" &> /dev/null; then
+    echo "Node $NODE is registered!"
+    break
+  fi
+  echo "Attempt $i/60..."
+  sleep 5
+done
 
-# Add taint to prevent user workloads from running on control plane
-kubectl taint nodes $(hostname) \
-  node-role.kubernetes.io/master=true:NoSchedule \
-  --overwrite || true  # May already exist
+########################################
+# 6. Label the control plane node
+########################################
+echo "Labeling control plane node..."
+k3s kubectl label nodes "$NODE" node-role.kubernetes.io/master=true --overwrite
+k3s kubectl label nodes "$NODE" node-role.kubernetes.io/control-plane=true --overwrite
+k3s kubectl taint nodes "$NODE" node-role.kubernetes.io/master=true:NoSchedule --overwrite || true
 
-# Install NGINX Ingress Controller
-echo "Installing NGINX Ingress Controller..."
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.0/deploy/static/provider/baremetal/deploy.yaml
+########################################
+# 7. Create namespace for your app
+########################################
+k3s kubectl create namespace whiteboard || true
+k3s kubectl label namespace whiteboard name=whiteboard --overwrite
 
-# Wait for ingress controller
-kubectl wait --namespace ingress-nginx \
-  --for=condition=ready pod \
-  --selector=app.kubernetes.io/component=controller \
-  --timeout=120s || echo "Ingress controller timeout - continuing anyway"
+########################################
+# 8. Install metrics-server
+########################################
+k3s kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
-# Install cert-manager
-echo "Installing cert-manager..."
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
-
-# Wait for cert-manager
-kubectl wait --namespace cert-manager \
-  --for=condition=ready pod \
-  --selector=app.kubernetes.io/instance=cert-manager \
-  --timeout=120s || echo "Cert-manager timeout - continuing anyway"
-
-# Create whiteboard namespace
-kubectl create namespace whiteboard || echo "Namespace already exists"
-kubectl label namespace whiteboard name=whiteboard --overwrite
-
-# Install metrics-server (needed for HPA)
-echo "Installing metrics-server..."
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-
-# Verify installation
-echo "=== K3s Server Ready ==="
-kubectl get nodes
-kubectl get pods -A
-
-# Save kubeconfig to a world-readable location
+########################################
+# 9. Save kubeconfig
+########################################
 mkdir -p /root/.kube
 cp /etc/rancher/k3s/k3s.yaml /root/.kube/config
 chmod 644 /root/.kube/config
 
-# Write K3s token for workers
-echo "$(cat /var/lib/rancher/k3s/server/node-token)" > /tmp/k3s-token.txt
+########################################
+# 10. Save token for worker nodes
+########################################
+cp /var/lib/rancher/k3s/server/node-token /tmp/k3s-token.txt
 chmod 644 /tmp/k3s-token.txt
 
-echo "K3s Server initialization complete!"
+########################################
+# 11. Summary
+########################################
+echo "=== K3s Server Ready ==="
+k3s kubectl get nodes
+k3s kubectl get pods -A
+
 echo "Server IP: $(hostname -I | awk '{print $1}')"
-echo "Token saved to: /tmp/k3s-token.txt"
+echo "Worker token saved to: /tmp/k3s-token.txt"
+echo "==== SETUP COMPLETE ===="
