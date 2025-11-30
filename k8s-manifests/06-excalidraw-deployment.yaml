@@ -39,8 +39,8 @@ spec:
       # Stateless frontend containers
       containers:
       - name: ui
-        image: skkhumaini1119/excalidraw-yjs:latest
-        imagePullPolicy: Always
+        image: excalidraw/excalidraw:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - name: http
           containerPort: 3000

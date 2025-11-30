@@ -10,6 +10,18 @@ stringData:
   REDIS_PASSWORD: "redis-whiteboard-demo-password"  # Change this in production!
 
 ---
+# Redis connection secret for applications
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-secret
+  namespace: whiteboard
+type: Opaque
+stringData:
+  REDIS_URL: "redis://:redis-whiteboard-demo-password@redis:6379/0"
+  REDIS_PASSWORD: "redis-whiteboard-demo-password"
+
+---
 # Redis StatefulSet - Internal CRDT state synchronization bus
 # No public IP, no external access
 # Used by y-websocket for distributed awareness and CRDT updates

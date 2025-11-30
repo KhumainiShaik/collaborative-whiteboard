@@ -24,7 +24,7 @@ systemctl start docker
 # 3. Install K3s (official installer, correct version)
 ########################################
 K3S_VERSION="v1.34.2+k3s1"
-K3S_TOKEN="k3s-secret-token-12345"
+K3S_TOKEN="${K3S_TOKEN}"
 
 echo "Installing K3s server version $K3S_VERSION..."
 curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="$K3S_VERSION" \

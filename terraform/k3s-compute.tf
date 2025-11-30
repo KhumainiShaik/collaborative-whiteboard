@@ -9,6 +9,7 @@ locals {
   k3s_server_startup_script = templatefile("${path.module}/scripts/k3s-server-init.sh", {
     cluster_name = var.environment
     private_subnet_cidr = var.private_subnet_cidr
+    K3S_TOKEN = random_password.k3s_token.result
   })
 
   k3s_worker_startup_script = templatefile("${path.module}/scripts/k3s-worker-init.sh", {
