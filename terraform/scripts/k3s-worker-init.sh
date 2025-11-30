@@ -25,15 +25,6 @@ systemctl start docker
 K3S_SERVER_IP="${K3S_SERVER_IP}"
 echo "Checking TCP connectivity to K3s server at $K3S_SERVER_IP:6443"
 
-for i in {1..60}; do
-  if nc -z "$K3S_SERVER_IP" 6443; then
-    echo "Server is reachable!"
-    break
-  fi
-  echo "Attempt $i/60: server not reachable yet..."
-  sleep 5
-done
-
 ########################################
 # 4. Install K3s agent
 ########################################

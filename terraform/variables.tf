@@ -30,13 +30,13 @@ variable "k3s_node_count" {
 variable "k3s_server_machine_type" {
   description = "Machine type for K3s server node"
   type        = string
-  default     = "e2-standard-2"
+  default     = "t2a-standard-2"
 }
 
 variable "k3s_worker_machine_type" {
   description = "Machine type for K3s worker nodes"
   type        = string
-  default     = "e2-standard-2"
+  default     = "t2a-standard-2"
 }
 
 variable "boot_disk_size_gb" {
