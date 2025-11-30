@@ -1,0 +1,6 @@
+*\.tfstate
+*\.tfstate.backup
+LICENSE.txt
+*-provider-*
+.DS_Store
+.terraform.lock.hcl
