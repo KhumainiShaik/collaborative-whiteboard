@@ -87,7 +87,7 @@ spec:
           name: kube-system
     ports:
     - protocol: TCP
-      port: 3000
+      port: 8080
 
 ---
 # NetworkPolicy: Excalidraw UI egress (to yjs-server, DNS)

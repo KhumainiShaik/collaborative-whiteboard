@@ -3,17 +3,19 @@
 # Routes to NGINX Ingress → private k3s cluster
 # ============================================================
 
-# Health check for backend - use Traefik NodePort 32285
+# Health check for backend - use Traefik NodePort 30134
 resource "google_compute_health_check" "http_health" {
   name        = "${var.environment}-http-health"
   http_health_check {
-    port = 32285
+    port = 30134
     request_path = "/"
   }
   
-  # More lenient health check settings
+  # Lenient health check settings for K8s
   check_interval_sec = 30
-  timeout_sec = 10
+  timeout_sec = 15
+  healthy_threshold = 2
+  unhealthy_threshold = 3
 }
 
 # Backend service for HTTP
@@ -42,7 +44,7 @@ resource "google_compute_instance_group" "k3s_nodes_ig" {
   
   named_port {
     name = "traefik-nodeport"
-    port = 32285
+    port = 30134
   }
 }
 

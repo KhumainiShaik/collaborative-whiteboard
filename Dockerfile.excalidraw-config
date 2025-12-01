@@ -1,0 +1,28 @@
+FROM skkhumaini1119/excalidraw-yjs:latest as app-base
+
+# Install tools for config injection
+RUN apk add --no-cache nodejs npm curl bash
+
+# Create config server script
+RUN mkdir -p /app/config-server && cd /app/config-server && npm init -y
+
+WORKDIR /app/config-server
+
+RUN npm install --save express serve-static
+
+COPY config-server.js /app/config-server/server.js
+
+# Final stage: run config server
+WORKDIR /
+
+# Copy the Excalidraw app from original image
+COPY --from=app-base /app /app
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOST=0.0.0.0
+ENV NODE_ENV=production
+
+# Run config server (wraps Excalidraw's express app or serves static)
+CMD ["node", "/app/config-server/server.js"]
