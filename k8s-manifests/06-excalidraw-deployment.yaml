@@ -48,7 +48,7 @@ spec:
         
         env:
         - name: YJS_SERVER_URL
-          value: "ws://<INGRESS_HOSTNAME>/ws"  # Replace <INGRESS_HOSTNAME> with public IP or hostname (e.g., ws://203.0.113.42/ws)
+          value: "ws://34.54.74.132/ws"
         - name: NODE_ENV
           value: "production"
         - name: HOST
