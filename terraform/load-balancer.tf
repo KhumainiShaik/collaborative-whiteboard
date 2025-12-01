@@ -3,29 +3,37 @@
 # Routes to NGINX Ingress → private k3s cluster
 # ============================================================
 
-# Health check for backend
+# Health check for backend - using HTTP instead of direct NodePort
 resource "google_compute_health_check" "http_health" {
   name        = "${var.environment}-http-health"
   http_health_check {
     port = 80
+    request_path = "/"
   }
+  
+  # More lenient health check settings
+  check_interval_sec = 30
+  timeout_sec = 10
 }
 
 # Backend service for HTTP
 resource "google_compute_backend_service" "http_backend" {
   name            = "${var.environment}-http-backend"
   protocol        = "HTTP"
-  port_name       = "http"
+  port_name       = "http-nodeport"
   timeout_sec     = 30
   health_checks   = [google_compute_health_check.http_health.id]
   load_balancing_scheme = "EXTERNAL"
+  session_affinity = "NONE"
 
   backend {
-    group = google_compute_instance_group.k3s_nodes_ig.id
+    group           = google_compute_instance_group.k3s_nodes_ig.id
+    balancing_mode  = "RATE"
+    max_rate_per_instance = 1000
   }
 }
 
-# Instance group (all k3s nodes, for NGINX Ingress)
+# Instance group (all k3s nodes, for NGINX Ingress NodePort)
 resource "google_compute_instance_group" "k3s_nodes_ig" {
   name        = "${var.environment}-nodes-ig"
   zone        = "${var.gcp_region}-a"
@@ -33,8 +41,8 @@ resource "google_compute_instance_group" "k3s_nodes_ig" {
                        [for w in google_compute_instance.k3s_workers : w.self_link])
   
   named_port {
-    name = "http"
-    port = 80
+    name = "http-nodeport"
+    port = 30080
   }
 }
 

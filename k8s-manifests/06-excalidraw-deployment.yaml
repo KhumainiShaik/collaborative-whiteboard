@@ -51,6 +51,10 @@ spec:
           value: "ws://<INGRESS_HOSTNAME>/ws"  # Replace <INGRESS_HOSTNAME> with public IP or hostname (e.g., ws://203.0.113.42/ws)
         - name: NODE_ENV
           value: "production"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "3000"
         
         livenessProbe:
           httpGet:

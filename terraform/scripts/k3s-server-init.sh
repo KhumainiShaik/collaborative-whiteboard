@@ -13,10 +13,7 @@ sysctl -w net.ipv6.conf.lo.disable_ipv6=1
 ########################################
 # 2. Install dependencies
 ########################################
-apt-get install -y curl wget git jq htop net-tools docker.io
-
-systemctl enable docker
-systemctl start docker
+apt-get install -y curl wget git jq htop net-tools
 
 ########################################
 # 3. Install K3s (official installer, correct version)

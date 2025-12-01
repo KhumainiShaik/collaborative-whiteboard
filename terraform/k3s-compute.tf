@@ -62,7 +62,7 @@ resource "google_compute_instance" "k3s_server" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-11"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts-arm64"
       size  = var.boot_disk_size_gb
     }
   }
@@ -98,7 +98,7 @@ resource "google_compute_instance" "k3s_workers" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-11"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts-arm64"
       size  = var.boot_disk_size_gb
     }
   }

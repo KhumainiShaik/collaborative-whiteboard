@@ -20,11 +20,11 @@ spec:
     ports:
     - protocol: TCP
       port: 1234
-  # Allow from NGINX ingress controller
+  # Allow from Traefik ingress controller
   - from:
     - namespaceSelector:
         matchLabels:
-          name: ingress-nginx
+          name: kube-system
     ports:
     - protocol: TCP
       port: 1234
@@ -84,7 +84,7 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          name: ingress-nginx
+          name: kube-system
     ports:
     - protocol: TCP
       port: 3000

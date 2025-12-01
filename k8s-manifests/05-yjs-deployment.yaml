@@ -38,7 +38,7 @@ spec:
       
       containers:
       - name: yjs
-        image: alokinplc/y-websocket:latest
+        image: skkhumaini1119/y-websocket:latest
         imagePullPolicy: Always
         ports:
         - name: ws
