@@ -20,7 +20,7 @@ spec:
     ports:
     - protocol: TCP
       port: 1234
-  # Allow from Traefik ingress controller
+  # Allow from Traefik ingress controller (both LoadBalancer service and controller pod)
   - from:
     - namespaceSelector:
         matchLabels:
@@ -68,7 +68,7 @@ spec:
       port: 53
 
 ---
-# NetworkPolicy: Excalidraw UI ingress (from NGINX ingress)
+# NetworkPolicy: Excalidraw UI ingress (from Traefik ingress controller)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -81,13 +81,14 @@ spec:
   policyTypes:
   - Ingress
   ingress:
+  # Allow from Traefik ingress controller in kube-system namespace
   - from:
     - namespaceSelector:
         matchLabels:
           name: kube-system
     ports:
     - protocol: TCP
-      port: 8080
+      port: 80
 
 ---
 # NetworkPolicy: Excalidraw UI egress (to yjs-server, DNS)
@@ -103,7 +104,7 @@ spec:
   policyTypes:
   - Egress
   egress:
-  # Allow to y-websocket
+  # Allow to yjs-server
   - to:
     - podSelector:
         matchLabels:
@@ -111,7 +112,7 @@ spec:
     ports:
     - protocol: TCP
       port: 1234
-  # Allow DNS
+  # Allow DNS (for domain resolution)
   - to:
     - namespaceSelector:
         matchLabels:
@@ -152,6 +153,12 @@ spec:
       port: 27017
   # Allow DNS
   - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
     - namespaceSelector:
         matchLabels:
           name: kube-system
