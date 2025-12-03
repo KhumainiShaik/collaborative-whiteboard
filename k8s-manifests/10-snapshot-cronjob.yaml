@@ -6,7 +6,7 @@ metadata:
   name: snapshot-sa
   namespace: whiteboard
   annotations:
-    iam.gke.io/gcp-service-account: snapshot-sa@PROJECT_ID.iam.gserviceaccount.com
+    iam.gke.io/gcp-service-account: snapshot-sa@helical-sled-477919-e9.iam.gserviceaccount.com
 
 ---
 # CronJob: Export CRDT snapshots to GCS bucket periodically
@@ -37,7 +37,7 @@ spec:
                   name: mongo-uri
                   key: MONGO_URI
             - name: GCS_BUCKET
-              value: "PROJECT_ID-whiteboard-snapshots"
+              value: "helical-sled-477919-e9-whiteboard-snapshots"
             command:
             - /bin/bash
             - -c

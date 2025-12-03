@@ -10,7 +10,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-upgrade: "websocket"
     nginx.ingress.kubernetes.io/proxy-connection: "Upgrade"
 spec:
-  ingressClassName: traefik
+  ingressClassName: nginx
   rules:
   - http:
       paths:
