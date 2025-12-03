@@ -89,6 +89,12 @@ spec:
     ports:
     - protocol: TCP
       port: 80
+  # Allow from other pods in whiteboard namespace (for pod-to-pod communication)
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 80
 
 ---
 # NetworkPolicy: Excalidraw UI egress (to yjs-server, DNS)

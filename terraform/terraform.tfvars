@@ -1,6 +1,6 @@
 # terraform.tfvars - Configure these values for your environment
 
-gcp_project_id         = "storied-catwalk-477918-e0"
+gcp_project_id         = "helical-sled-477919-e9"
 gcp_region             = "us-central1"
 private_vpc_cidr       = "10.10.0.0/16"
 private_subnet_cidr    = "10.10.1.0/24"

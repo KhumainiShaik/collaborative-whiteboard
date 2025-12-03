@@ -39,7 +39,7 @@ spec:
       # Stateless frontend container (Nginx + Excalidraw SPA)
       containers:
       - name: ui
-        image: skkhumaini1119/excalidraw-yjs:v1.2.5
+        image: skkhumaini1119/excalidraw-yjs:v1.4.6
         imagePullPolicy: Always
         ports:
         - name: http

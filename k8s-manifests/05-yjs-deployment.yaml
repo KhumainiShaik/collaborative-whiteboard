@@ -7,7 +7,7 @@ metadata:
     app: yjs-server
     tier: websocket-sync
 spec:
-  replicas: 2
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -22,23 +22,10 @@ spec:
         app: yjs-server
         tier: websocket-sync
     spec:
-      # Pod anti-affinity: spread y-websocket replicas across nodes
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - yjs-server
-              topologyKey: kubernetes.io/hostname
-      
+      # Single replica - all clients connect to same Yjs instance for real-time sync
       containers:
       - name: yjs
-        image: skkhumaini1119/y-websocket:latest
+        image: skkhumaini1119/y-websocket:v1.2-fixed
         imagePullPolicy: Always
         ports:
         - name: ws
