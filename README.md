@@ -25,8 +25,9 @@ sudo kubectl -n whiteboard get pods
 | File | Purpose | Audience |
 |------|---------|----------|
 | **ARCHITECTURE.md** | System design, components, data flow | Everyone |
+| **FIXES_AND_MIGRATION.md** | All fixes from Traefik → NGINX migration | DevOps / Technical |
 | **NGINX_BRANCH_DEPLOYMENT.md** | Deploy guide for nginx-migration branch | DevOps / SRE |
-| **MASTER_BRANCH_REFERENCE.md** | How master differs from nginx-migration | DevOps / Reviewers |
+| **MASTER_BRANCH_REFERENCE.md** | How master (Traefik) differs from nginx-migration | DevOps / Reviewers |
 | **TROUBLESHOOTING.md** | Fix common issues (both branches) | DevOps / Support |
 | **START_HERE_PRODUCTION.md** | Quick overview and quick-start | Evaluators |
 | **PRODUCTION_QUICK_START.md** | How to test real-time sync | Students / Evaluators |
@@ -49,9 +50,9 @@ sudo kubectl -n whiteboard get pods
 
 ### For Technical Review (20 min read)
 1. **ARCHITECTURE.md** — Components
-2. **NGINX_BRANCH_DEPLOYMENT.md** — Deployment flow
-3. **FIXES_APPLIED_SUMMARY.md** — What was fixed
-4. **VERSION_AND_ARCHITECTURE_DRIFT.md** — Detailed changes
+2. **FIXES_AND_MIGRATION.md** — All fixes from Traefik → NGINX (6 issues per phase)
+3. **NGINX_BRANCH_DEPLOYMENT.md** — Deployment flow
+4. **FIXES_APPLIED_SUMMARY.md** — Current GCS IAM fix details
 5. **TROUBLESHOOTING.md** — How to maintain
 
 ---
@@ -133,12 +134,14 @@ Excalidraw  yjs-ws  Redis
 - Fixed y-websocket binding (0.0.0.0)
 - GCS IAM fixed (roles/storage.objectAdmin)
 - All components operational
+- **6 fixes applied during migration (see FIXES_AND_MIGRATION.md)**
 - **Use this branch for new deployments**
 
 ### master (REFERENCE)
 - Earlier iteration with Traefik
 - Useful for understanding evolution
 - Compare with nginx-migration to see improvements
+- **6 issues fixed during initial Traefik setup (documented in FIXES_AND_MIGRATION.md)**
 - **Do not use for new deployments**
 
 ---
