@@ -45,10 +45,12 @@ resource "google_storage_bucket_iam_member" "snapshot_bucket_write" {
 }
 
 # Workload Identity: K8s SA → GCP SA
-# Binding: namespace/k8s-sa → gcp-sa
-resource "google_service_account_iam_member" "snapshot_workload_identity" {
-  service_account_id = google_service_account.snapshot_sa.name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.gcp_project_id}.svc.id.goog[whiteboard/snapshot-sa]"
-}
+# NOTE: Workload Identity pool must exist first
+# For now, using direct GCS auth via service account key in K8s secret
+# Uncomment below after enabling Workload Identity on cluster:
+# resource "google_service_account_iam_member" "snapshot_workload_identity" {
+#   service_account_id = google_service_account.snapshot_sa.name
+#   role               = "roles/iam.workloadIdentityUser"
+#   member             = "serviceAccount:${var.gcp_project_id}.svc.id.goog[whiteboard/snapshot-sa]"
+# }
 

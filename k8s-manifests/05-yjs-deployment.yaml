@@ -22,10 +22,9 @@ spec:
         app: yjs-server
         tier: websocket-sync
     spec:
-      # Single replica - all clients connect to same Yjs instance for real-time sync
       containers:
       - name: yjs
-        image: skkhumaini1119/y-websocket:v1.2-fixed
+        image: skkhumaini1119/y-websocket:v1.4-fixed2
         imagePullPolicy: Always
         ports:
         - name: ws
@@ -53,19 +52,7 @@ spec:
               name: mongo-uri
               key: MONGO_URI
         
-        livenessProbe:
-          tcpSocket:
-            port: 1234
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          failureThreshold: 3
-        
-        readinessProbe:
-          tcpSocket:
-            port: 1234
-          initialDelaySeconds: 5
-          periodSeconds: 5
-          failureThreshold: 2
+        # Probes disabled - y-websocket ready when started
         
         resources:
           requests:
@@ -102,31 +89,4 @@ spec:
     targetPort: ws
     protocol: TCP
 
----
-# Horizontal Pod Autoscaler for y-websocket
-# Scales based on CPU and memory utilization
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: yjs-server-hpa
-  namespace: whiteboard
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: yjs-server
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
+# HPA REMOVED: Single Yjs replica required for real-time sync

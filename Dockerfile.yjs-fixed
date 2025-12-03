@@ -1,0 +1,20 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install correct versions of Yjs packages
+RUN npm install --save \
+  yjs@13.6.14 \
+  y-websocket@1.5.0
+
+# Create a simple server startup script that y-websocket understands
+RUN cat > /app/start.sh << 'EOF'
+#!/bin/sh
+PORT=1234 npx -y y-websocket --port 1234
+EOF
+
+RUN chmod +x /app/start.sh
+
+EXPOSE 1234
+
+CMD ["/app/start.sh"]

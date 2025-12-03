@@ -1,0 +1,90 @@
+# Multi-architecture Y-WebSocket server with HTTP health check
+# Rebuilt from alokinplc/y-websocket for ARM64 + AMD64 support
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install build essentials and git
+RUN apk add --no-cache git python3 make g++ ca-certificates
+
+# Create Y-WebSocket server with HTTP health endpoint
+RUN mkdir -p bin && cat > bin/y-websocket.js << 'EOF'
+#!/usr/bin/env node
+const WebSocket = require('ws');
+const http = require('http');
+const url = require('url');
+const mapping = new Map();
+
+const server = http.createServer((req, res) => {
+  // HTTP health check endpoint
+  if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', rooms: mapping.size }));
+    return;
+  }
+  
+  // Default 404 for non-WebSocket HTTP requests
+  res.writeHead(404);
+  res.end('Not Found');
+});
+
+const wss = new WebSocket.Server({ server });
+
+const PORT = process.env.PORT || 1234;
+
+wss.on('connection', (ws, req) => {
+  const pathname = url.parse(req.url).pathname;
+  const room = pathname.slice(1);
+  
+  if (!mapping.has(room)) {
+    mapping.set(room, new Set());
+  }
+  
+  const clients = mapping.get(room);
+  clients.add(ws);
+  
+  console.log(`Client connected to room: ${room}, clients in room: ${clients.size}`);
+  
+  ws.on('message', (data) => {
+    console.log(`Message in room ${room}: ${data.length} bytes`);
+    clients.forEach(client => {
+      if (client !== ws && client.readyState === WebSocket.OPEN) {
+        client.send(data);
+      }
+    });
+  });
+  
+  ws.on('close', () => {
+    clients.delete(ws);
+    console.log(`Client disconnected from room: ${room}, clients in room: ${clients.size}`);
+    if (clients.size === 0) {
+      mapping.delete(room);
+    }
+  });
+  
+  ws.on('error', (err) => {
+    console.error('WebSocket error:', err);
+  });
+});
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log('Y-WebSocket server listening on port ' + PORT);
+  console.log('WebSocket server ready to accept connections');
+});
+EOF
+RUN chmod +x bin/y-websocket.js
+
+# Install dependencies
+RUN npm install --save ws
+
+# Expose port
+EXPOSE 1234
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:1234/health || exit 1
+
+# Run the server
+ENTRYPOINT ["node"]
+CMD ["bin/y-websocket.js"]

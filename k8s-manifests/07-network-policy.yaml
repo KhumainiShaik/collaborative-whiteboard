@@ -24,7 +24,7 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          name: kube-system
+          kubernetes.io/metadata.name: kube-system
     ports:
     - protocol: TCP
       port: 1234
@@ -85,7 +85,7 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          name: kube-system
+          kubernetes.io/metadata.name: kube-system
     ports:
     - protocol: TCP
       port: 80
@@ -118,11 +118,19 @@ spec:
     ports:
     - protocol: TCP
       port: 1234
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
   # Allow DNS (for domain resolution)
   - to:
     - namespaceSelector:
         matchLabels:
-          name: kube-system
+          kubernetes.io/metadata.name: kube-system
     ports:
     - protocol: UDP
       port: 53
@@ -161,13 +169,7 @@ spec:
   - to:
     - namespaceSelector:
         matchLabels:
-          name: kube-system
-    ports:
-    - protocol: UDP
-      port: 53
-    - namespaceSelector:
-        matchLabels:
-          name: kube-system
+          kubernetes.io/metadata.name: kube-system
     ports:
     - protocol: UDP
       port: 53
