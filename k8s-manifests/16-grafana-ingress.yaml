@@ -1,0 +1,23 @@
+---
+# Grafana Ingress Configuration
+# NOTE: Grafana is now routed through main whiteboard ingress at /grafana path
+# This file is kept for reference and can be removed
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  - host: grafana.whiteboard.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 3000

@@ -20,7 +20,7 @@ spec:
     ports:
     - protocol: TCP
       port: 1234
-  # Allow from Traefik ingress controller (both LoadBalancer service and controller pod)
+  # Allow from Ingress controller (e.g., nginx) (both LoadBalancer service and controller pod)
   - from:
     - namespaceSelector:
         matchLabels:
@@ -68,7 +68,7 @@ spec:
       port: 53
 
 ---
-# NetworkPolicy: Excalidraw UI ingress (from Traefik ingress controller)
+# NetworkPolicy: Excalidraw UI ingress (from Ingress controller, e.g., nginx)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -81,7 +81,7 @@ spec:
   policyTypes:
   - Ingress
   ingress:
-  # Allow from Traefik ingress controller in kube-system namespace
+  # Allow from Ingress controller (nginx) in kube-system namespace
   - from:
     - namespaceSelector:
         matchLabels:

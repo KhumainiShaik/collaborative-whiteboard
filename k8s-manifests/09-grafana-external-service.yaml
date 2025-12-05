@@ -1,0 +1,14 @@
+---
+# ExternalName Service to access Grafana from whiteboard namespace
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: whiteboard
+spec:
+  type: ExternalName
+  externalName: grafana.monitoring.svc.cluster.local
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP

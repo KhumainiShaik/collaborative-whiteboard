@@ -81,6 +81,10 @@ metadata:
     app: yjs-server
 spec:
   type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
   selector:
     app: yjs-server
   ports:

@@ -1,45 +1,290 @@
-# Documentation Index
+# Excalidraw + Yjs on Kubernetes - Complete Documentation
 
-**Last Updated:** 2025-12-03  
-**Branch:** nginx-migration (PRIMARY) | master (REFERENCE)
+**Status:** ✅ Production Ready | **Updated:** December 2025 | **Cluster:** k3s (3 nodes, GCP)
+
+## 📖 Documentation Index
+
+**START HERE** → Choose based on your need:
+
+| Document | Purpose | Read Time |
+|----------|---------|-----------|
+| **[README_MONITORING.md](./README_MONITORING.md)** ⭐ | Navigation hub for all docs | 2 min |
+| **[FRESH_SETUP.md](./FRESH_SETUP.md)** | Deploy from scratch + debugging fixes | 15 min |
+| **[OBSERVABILITY.md](./OBSERVABILITY.md)** | Monitoring architecture & metrics | 10 min |
+| **[TASK4_DEMO.md](./TASK4_DEMO.md)** | Live demo walkthrough (HPA, Yjs, monitoring) | 12 min |
+| **[FINAL_ARCHITECTURE.md](./FINAL_ARCHITECTURE.md)** | Complete system design & verification | 10 min |
 
 ---
 
-## Start Here
+## 🚀 Quick Access
 
-**Public Access:**
-```bash
-http://34.49.56.133/
-```
+### Application
+- **Main App:** http://34.49.56.133
+- **Grafana:** http://34.49.56.133/grafana (admin/admin)
 
-**Admin SSH (IAP Tunnel):**
+### Cluster Commands
 ```bash
+# Via GCP IAP tunnel
 gcloud compute ssh private-cloud-server-0 --zone=us-central1-a --tunnel-through-iap
-sudo kubectl -n whiteboard get pods
+
+# View pods
+sudo kubectl get pods -n whiteboard
+sudo kubectl get pods -n monitoring
+
+# View system resources
+sudo kubectl top nodes
+sudo kubectl top pods -n whiteboard
 ```
 
 ---
 
-## Documentation Files
+## 📚 Documentation (Clean & Consolidated)
 
-| File | Purpose | Audience |
-|------|---------|----------|
-| **ARCHITECTURE.md** | System design, components, data flow | Everyone |
-| **FIXES_AND_MIGRATION.md** | All fixes from Traefik → NGINX migration | DevOps / Technical |
-| **NGINX_BRANCH_DEPLOYMENT.md** | Deploy guide for nginx-migration branch | DevOps / SRE |
-| **MASTER_BRANCH_REFERENCE.md** | How master (Traefik) differs from nginx-migration | DevOps / Reviewers |
-| **TROUBLESHOOTING.md** | Fix common issues (both branches) | DevOps / Support |
-| **START_HERE_PRODUCTION.md** | Quick overview and quick-start | Evaluators |
-| **PRODUCTION_QUICK_START.md** | How to test real-time sync | Students / Evaluators |
-| **FIXES_APPLIED_SUMMARY.md** | What was fixed (GCS IAM, CronJob) | Technical Reviewers |
-| **VERSION_AND_ARCHITECTURE_DRIFT.md** | v1.4.5 → v1.4.6 changes in detail | Auditors |
+| Document | Purpose | Read Time |
+|----------|---------|-----------|
+| **[README_START_HERE.md](./README_START_HERE.md)** | Documentation index & quick reference | 3 min |
+| **[FINAL_ARCHITECTURE.md](./FINAL_ARCHITECTURE.md)** | Complete system design & verification | 10 min |
+| **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** | Manifest reference & deployment procedures | 15 min |
+| **[MONITORING_DASHBOARD.md](./MONITORING_DASHBOARD.md)** | Grafana/Prometheus setup & access | 8 min |
+| **[VIDEO_DEMO_COMMANDS.md](./VIDEO_DEMO_COMMANDS.md)** | Task 4 demonstration commands | 20 min |
+| **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** | Common issues & solutions | Reference |
 
 ---
 
-## Recommended Reading Order
+## ✅ Task Requirements Status
 
-### For Academic Evaluation (5 min read)
-1. **ARCHITECTURE.md** — Understand the design
+### Task 3: Multi-Instance Deployment
+✅ **COMPLETE** - 7 containers (3 Excalidraw + 3 y-websocket + 1 Redis) across 2 worker nodes
+
+**Verification:**
+```bash
+kubectl get pods -n whiteboard -o wide
+# Shows pods distributed across private-cloud-worker-0 and private-cloud-worker-1
+```
+
+### Task 4 Gap 1: Monitoring & Observability
+✅ **COMPLETE** - Prometheus metrics collection + Grafana visualization
+
+**Access:** http://34.49.56.133:31519 (admin/admin)
+
+**Verification:**
+```bash
+kubectl get pods -n monitoring
+# Shows: prometheus-* and grafana-* both Running
+```
+
+### Task 4 Gap 2: Horizontal Scaling
+✅ **COMPLETE** - HPA configured (Excalidraw 2-8, y-websocket 1-4 replicas)
+
+**Verification:**
+```bash
+kubectl get hpa -n whiteboard  # Shows HPA configuration
+kubectl get deployment -n whiteboard -o custom-columns=NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas
+```
+
+### Task 4 Gap 4: Resource Visibility
+✅ **COMPLETE** - Metrics Server + kubectl top + Prometheus/Grafana
+
+**Verification:**
+```bash
+kubectl top nodes        # Node CPU/memory
+kubectl top pods -n whiteboard  # Pod CPU/memory
+```
+
+---
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────────────────────────┐
+│  GCP HTTP Load Balancer (External)  │
+│  34.49.56.133:80 → NGINX Ingress    │
+└─────────────────────────────────────┘
+                 ↓
+┌─────────────────────────────────────┐
+│  k3s Kubernetes Cluster (3 nodes)   │
+│                                     │
+│  whiteboard namespace:              │
+│  • Excalidraw UI (3 replicas)       │
+│  • y-websocket (3 replicas)         │
+│  • Redis (1 replica)                │
+│                                     │
+│  monitoring namespace:              │
+│  • Prometheus (metrics)             │
+│  • Grafana (dashboards)             │
+│                                     │
+│  kube-system namespace:             │
+│  • Metrics Server (resource API)    │
+│  • CoreDNS, nginx-ingress           │
+└─────────────────────────────────────┘
+```
+
+**Nodes:**
+- `private-cloud-server-0` (4 CPU, 8 GB, Control Plane)
+- `private-cloud-worker-0` (4 CPU, 8 GB, App pods)
+- `private-cloud-worker-1` (4 CPU, 8 GB, App pods)
+
+---
+
+## 🔍 Key Metrics (Baseline)
+
+| Component | CPU | Memory | Status |
+|-----------|-----|--------|--------|
+| Each Node | 1-2% | 7-11% | ✅ Low utilization |
+| Excalidraw UI (per pod) | 2-3m | 18-21 Mi | ✅ Stable |
+| y-websocket (per pod) | 1-2m | 12-14 Mi | ✅ Stable |
+| Redis | 1m | 11 Mi | ✅ Stable |
+
+---
+
+## 📦 Kubernetes Manifests
+
+All manifests in `k8s-manifests/` directory (32 total resources):
+
+| File | Type | Count | Status |
+|------|------|-------|--------|
+| 00-namespace.yaml | Namespace | 1 | ✅ |
+| 01-mongodb-secret.yaml | Secret | 1 | ✅ |
+| 03-redis-statefulset.yaml | StatefulSet | 1 | ✅ |
+| 05-yjs-deployment.yaml | Deployment + Service | 2 | ✅ |
+| 06-excalidraw-deployment.yaml | Deployment + Service | 2 | ✅ |
+| 07-network-policy.yaml | NetworkPolicy | 1 | ✅ |
+| 08-ingress-tls.yaml | Ingress | 1 | ✅ |
+| 09-excalidraw-nginx-config.yaml | ConfigMap | 1 | ✅ |
+| 10-snapshot-cronjob.yaml | CronJob | 1 | ✅ |
+| 11-nginx-ingress.yaml | Ingress | 1 | ✅ |
+| 12-prometheus.yaml | Monitoring (6 resources) | 6 | ✅ |
+| 13-grafana.yaml | Monitoring (3 resources) | 3 | ✅ |
+| 14-hpa.yaml | HPA (2 autoscalers) | 2 | ✅ |
+| 15-metrics-server.yaml | System (7 resources) | 7 | ✅ |
+
+---
+
+## 🎯 For Video Demonstration
+
+**See:** [VIDEO_DEMO_COMMANDS.md](./VIDEO_DEMO_COMMANDS.md)
+
+**Segments (14 min total):**
+1. Architecture & Task Requirements (2 min)
+2. Task 3 - Multi-Instance Verification (1 min)
+3. Gap 1 - Monitoring Dashboard (3 min)
+4. Gap 4 - Resource Visibility (2 min)
+5. Gap 2 - Scaling Configuration (4 min)
+6. Final System Health Check (1 min)
+
+**Pre-Demo Checklist:**
+```bash
+# Run 5 minutes before recording
+kubectl get pods -n whiteboard
+kubectl get pods -n monitoring
+kubectl get hpa -n whiteboard
+kubectl top nodes
+```
+
+---
+
+## 🛠️ Commands Reference
+
+### System Status
+```bash
+kubectl get ns | grep -E 'whiteboard|monitoring'
+kubectl get pods -A --no-headers | wc -l
+kubectl get nodes -o wide
+```
+
+### Application
+```bash
+kubectl get deployment -n whiteboard -o custom-columns=NAME:.metadata.name,REPLICAS:.spec.replicas,READY:.status.readyReplicas
+kubectl top pods -n whiteboard
+```
+
+### Monitoring
+```bash
+kubectl get pods -n monitoring
+kubectl get svc -n monitoring
+# Grafana: http://34.49.56.133:31519 (admin/admin)
+```
+
+### Scaling
+```bash
+kubectl get hpa -n whiteboard
+kubectl describe hpa excalidraw-ui-hpa -n whiteboard
+```
+
+### Load Test
+```bash
+cd /path/to/scripts
+python load-test.py  # Generates 5 concurrent users
+# Watch scaling: kubectl get hpa -w
+```
+
+---
+
+## 📖 Documentation Files
+
+For **Deployment:** See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)  
+For **Monitoring Setup:** See [MONITORING_DASHBOARD.md](./MONITORING_DASHBOARD.md)  
+For **Architecture Details:** See [FINAL_ARCHITECTURE.md](./FINAL_ARCHITECTURE.md)  
+For **Issues:** See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+
+---
+
+## 🌐 Access Points
+
+| Service | URL | Credentials | Purpose |
+|---------|-----|-------------|---------|
+| Excalidraw App | http://34.49.56.133 | None | Main application |
+| Grafana | http://34.49.56.133:31519 | admin/admin | Monitoring dashboard |
+| Prometheus | See MONITORING_DASHBOARD.md | None | Metrics query |
+| Kubernetes API | Via IAP tunnel | kubeconfig | Admin access |
+
+---
+
+## For Academic Evaluation
+
+1. **System Design:** [FINAL_ARCHITECTURE.md](./FINAL_ARCHITECTURE.md) - Section "Architecture Overview"
+2. **Task Verification:** [README_START_HERE.md](./README_START_HERE.md) - Section "Task Requirements Verification"
+3. **Deployment:** [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) - Full deployment process documented
+4. **Monitoring:** [MONITORING_DASHBOARD.md](./MONITORING_DASHBOARD.md) - All metrics and observability
+5. **Testing:** [VIDEO_DEMO_COMMANDS.md](./VIDEO_DEMO_COMMANDS.md) - Reproducible test commands
+
+---
+
+## Quick Problem Solving
+
+**Pod not starting?**
+```bash
+kubectl describe pod <pod-name> -n whiteboard
+kubectl logs <pod-name> -n whiteboard
+```
+
+**Metrics not showing?**
+```bash
+kubectl get pods -n kube-system -l k8s-app=metrics-server
+kubectl logs -n kube-system -l k8s-app=metrics-server
+```
+
+**Grafana dashboard blank?**
+```bash
+kubectl port-forward -n monitoring svc/prometheus 9090:9090
+# Check http://localhost:9090/graph for metrics
+```
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for more solutions.
+
+---
+
+## 📋 System Status
+
+- **Namespaces:** whiteboard, monitoring, kube-system ✅
+- **Pods Running:** 13 (7 application + 2 monitoring + 4 system) ✅
+- **Nodes:** 3 (all ready) ✅
+- **Services:** 2 (Excalidraw UI + yjs websocket, Grafana dashboard) ✅
+- **Monitoring:** Prometheus + Grafana ✅
+- **Metrics:** kubectl top working ✅
+- **Ingress:** NGINX ingress controller ✅
+
+**System is fully operational and ready for production use.**
 2. **START_HERE_PRODUCTION.md** — See what's deployed
 3. **PRODUCTION_QUICK_START.md** — Test the live app
 

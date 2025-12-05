@@ -9,18 +9,24 @@ metadata:
     nginx.ingress.kubernetes.io/websocket-services: yjs-server-svc
     nginx.ingress.kubernetes.io/proxy-upgrade: "websocket"
     nginx.ingress.kubernetes.io/proxy-connection: "Upgrade"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      location ~ ^/grafana(/|$)(.*) {
+        rewrite ^/grafana/?(.*)$ /$1 break;
+        proxy_pass http://grafana:3000;
+        proxy_set_header X-Forwarded-Prefix /grafana;
+      }
 spec:
   ingressClassName: nginx
   rules:
   - http:
       paths:
-      - path: /
+      - path: /grafana
         pathType: Prefix
         backend:
           service:
-            name: excalidraw-ui-svc
+            name: grafana
             port:
-              number: 80
+              number: 3000
       - path: /ws
         pathType: Prefix
         backend:
@@ -28,6 +34,13 @@ spec:
             name: yjs-server-svc
             port:
               number: 1234
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: excalidraw-ui-svc
+            port:
+              number: 80
 
 ---
 # PodDisruptionBudget for yjs-server

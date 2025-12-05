@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cadvisor
+  namespace: kube-system
+  labels:
+    app: cadvisor
+spec:
+  selector:
+    matchLabels:
+      app: cadvisor
+  template:
+    metadata:
+      labels:
+        app: cadvisor
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+    spec:
+      hostNetwork: true
+      hostPID: true
+      automountServiceAccountToken: false
+      tolerations:
+      - operator: Exists
+      containers:
+      - name: cadvisor
+        image: gcr.io/cadvisor/cadvisor:v0.47.0
+        args:
+        - --housekeeping_interval=10s
+        - --docker_only=false
+        ports:
+        - containerPort: 8080
+          hostPort: 8080
+          name: metrics
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: root
+          mountPath: /rootfs
+          readOnly: true
+        - name: var-run
+          mountPath: /var/run
+          readOnly: true
+        - name: sys
+          mountPath: /sys
+          readOnly: true
+        - name: var-lib
+          mountPath: /var/lib
+          readOnly: true
+      volumes:
+      - name: root
+        hostPath:
+          path: /
+          type: Directory
+      - name: var-run
+        hostPath:
+          path: /var/run
+          type: Directory
+      - name: sys
+        hostPath:
+          path: /sys
+          type: Directory
+      - name: var-lib
+        hostPath:
+          path: /var/lib
+          type: Directory
+  updateStrategy:
+    type: RollingUpdate
